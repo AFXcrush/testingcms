@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 const OWNER = process.env.NEXT_PUBLIC_GITHUB_OWNER;
 const REPO = process.env.NEXT_PUBLIC_GITHUB_REPO;
 const FILE_PATH = process.env.NEXT_PUBLIC_FILE_PATH;
-const TOKEN = process.env.GITHUB_TOKEN; // Usa una variable de entorno para seguridad
+const TOKEN = process.env.GITHUB_TOKEN;
 
 const octokit = new Octokit({ auth: TOKEN });
 
@@ -47,9 +47,20 @@ async function writeData(data) {
   });
 }
 
+// Función para agregar headers de CORS
+function addCORSHeaders(response) {
+  response.headers.set("Access-Control-Allow-Origin", "*");
+  response.headers.set(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, DELETE, OPTIONS"
+  );
+  response.headers.set("Access-Control-Allow-Headers", "Content-Type");
+  return response;
+}
+
 export async function GET() {
   const posts = await readData();
-  return NextResponse.json(posts, { status: 200 });
+  return addCORSHeaders(NextResponse.json(posts, { status: 200 }));
 }
 
 export async function POST(req) {
@@ -65,16 +76,15 @@ export async function POST(req) {
 
   let posts = await readData();
   if (posts.some((post) => post.title === title)) {
-    return NextResponse.json(
-      { message: "Title must be unique" },
-      { status: 400 }
+    return addCORSHeaders(
+      NextResponse.json({ message: "Title must be unique" }, { status: 400 })
     );
   }
 
   const newPost = { id: slug, title, description, content: content || [] };
   posts.push(newPost);
   await writeData(posts);
-  return NextResponse.json(newPost, { status: 201 });
+  return addCORSHeaders(NextResponse.json(newPost, { status: 201 }));
 }
 
 export async function PUT(req) {
@@ -82,11 +92,13 @@ export async function PUT(req) {
   let posts = await readData();
   const index = posts.findIndex((post) => post.id === id);
   if (index === -1)
-    return NextResponse.json({ message: "Post not found" }, { status: 404 });
+    return addCORSHeaders(
+      NextResponse.json({ message: "Post not found" }, { status: 404 })
+    );
 
   posts[index] = { id, title, description, content };
   await writeData(posts);
-  return NextResponse.json(posts[index], { status: 200 });
+  return addCORSHeaders(NextResponse.json(posts[index], { status: 200 }));
 }
 
 export async function DELETE(req) {
@@ -94,5 +106,12 @@ export async function DELETE(req) {
   let posts = await readData();
   posts = posts.filter((post) => post.id !== id);
   await writeData(posts);
-  return NextResponse.json({ message: "Post deleted" }, { status: 200 });
+  return addCORSHeaders(
+    NextResponse.json({ message: "Post deleted" }, { status: 200 })
+  );
+}
+
+//MANEJO DE SOLICITUDES "OPTIONS" PARA CORS
+export function OPTIONS() {
+  return addCORSHeaders(new Response(null, { status: 204 }));
 }
